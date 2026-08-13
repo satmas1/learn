@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ArrowLeft, ArrowRight, ClipboardList, Clock, Layers, ListChecks, Loader2, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ClipboardList, Clock, Layers, ListChecks, Loader2, Trophy, Target } from 'lucide-react';
 
 // Grade -> visual style
 const GRADE_STYLE = {
@@ -126,11 +126,38 @@ export default function TestsPage() {
                     <Badge className="ml-auto bg-white/20 hover:bg-white/25 backdrop-blur">{list.length} test{list.length > 1 ? 's' : ''}</Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {list.map(t => (
-                      <TestCard key={t.id} t={t} style={style} />
-                    ))}
-                  </div>
+                  {(() => {
+                    const fullExams = list.filter(t => (t.category || 'full') === 'full');
+                    const strandDrills = list.filter(t => t.category === 'strand');
+                    return (
+                      <div className="space-y-6">
+                        {fullExams.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Trophy className="h-4 w-4 text-amber-500" />
+                              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Full exams</h3>
+                              <Badge variant="secondary" className="text-[10px]">{fullExams.length}</Badge>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                              {fullExams.map(t => <TestCard key={t.id} t={t} style={style} />)}
+                            </div>
+                          </div>
+                        )}
+                        {strandDrills.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <Target className="h-4 w-4 text-indigo-500" />
+                              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Strand drills</h3>
+                              <Badge variant="secondary" className="text-[10px]">{strandDrills.length}</Badge>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                              {strandDrills.map(t => <TestCard key={t.id} t={t} style={style} />)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </section>
               );
             })}
@@ -142,13 +169,14 @@ export default function TestsPage() {
 }
 
 function TestCard({ t, style }) {
+  const isStrand = t.category === 'strand';
   return (
     <Card className="overflow-hidden relative hover:shadow-lg transition">
       <div className={`absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r ${style.rail}`} />
       <CardHeader className="pt-6">
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Trophy className="h-4 w-4 text-amber-500" />
+            {isStrand ? <Target className="h-4 w-4 text-indigo-500" /> : <Trophy className="h-4 w-4 text-amber-500" />}
             {t.title}
           </CardTitle>
           <Badge className={`${style.badge} hover:${style.badge} text-white shrink-0`}>{style.label}</Badge>
@@ -159,6 +187,7 @@ function TestCard({ t, style }) {
         <div className="flex flex-wrap gap-2 text-xs">
           <Badge variant="outline" className="gap-1"><ListChecks className="h-3 w-3" /> {t.totalQuestions} questions</Badge>
           <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> ~{t.estMinutes} min</Badge>
+          {isStrand && <Badge variant="outline" className="gap-1 text-indigo-700 border-indigo-200 bg-indigo-50">Strand</Badge>}
         </div>
         <Link href={`/tests/${t.id}`}>
           <Button className="w-full group">

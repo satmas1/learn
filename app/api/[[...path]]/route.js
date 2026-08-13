@@ -439,6 +439,8 @@ export async function GET(request) {
         id: t.id, title: t.title, description: t.description,
         totalQuestions: t.totalQuestions, estMinutes: t.estMinutes,
         grade: t.grade || 'mixed',
+        category: t.category || 'full',
+        strandId: t.strandId || null,
       })) });
     }
 
