@@ -83,6 +83,85 @@ async function getOrCreateDemoUser(db) {
   return u;
 }
 
+// Auto-generated reteach suggestions from class distribution + error patterns
+function buildReteachSuggestions({ node, strand, dist, avgP, roster, errorPattern }) {
+  const s = [];
+  const total = roster.length || 1;
+  const strugglingPct = (dist.struggling + dist.developing) / total;
+  const isLinear = /Linear|Slope|Parallel|Modelling/i.test(node.title);
+
+  // Whole-class urgency
+  if (avgP < 0.35) {
+    s.push({
+      priority: 'high',
+      title: 'Restart with a concrete anchor',
+      body: `Class average is ${(avgP*100).toFixed(0)}%. Open a mini-lesson with a real-world anchor (walking speed / phone plan cost) before touching symbols.`,
+    });
+  } else if (avgP < 0.65) {
+    s.push({
+      priority: 'medium',
+      title: 'Split-group instruction',
+      body: `About ${(strugglingPct*100).toFixed(0)}% of the class is still developing. Pull the bottom third for a 10-min guided reteach while the rest tackles practice.`,
+    });
+  } else {
+    s.push({
+      priority: 'low',
+      title: 'Ready for extension',
+      body: `Most students are proficient. Push the top group into a challenge task (multi-step modelling) and use them as peer coaches.`,
+    });
+  }
+
+  // Concept-specific tips (linear graphs)
+  if (isLinear) {
+    if (errorPattern.slopeErrs > errorPattern.interceptErrs) {
+      s.push({
+        priority: 'high',
+        title: 'Focus on slope intuition',
+        body: `Wrong answers skew toward slope errors (${errorPattern.slopeErrs} vs ${errorPattern.interceptErrs}). Try a rise-over-run motion drill: physically walk grids before adjusting the m slider.`,
+      });
+    } else if (errorPattern.interceptErrs > errorPattern.slopeErrs) {
+      s.push({
+        priority: 'high',
+        title: 'Reinforce y-intercept meaning',
+        body: `Most errors are on the intercept (${errorPattern.interceptErrs} vs ${errorPattern.slopeErrs}). Emphasize “where the line crosses at x=0” with a story-problem frame.`,
+      });
+    } else {
+      s.push({
+        priority: 'medium',
+        title: 'Two-parameter dance',
+        body: `Slope and intercept errors are balanced. Have students lock one slider and vary the other to isolate each parameter\u2019s effect.`,
+      });
+    }
+    s.push({
+      priority: 'medium',
+      title: 'Warm-up: predict then check',
+      body: `Before opening the widget, show a graph and have students predict m and b on paper. Then verify with the sliders \u2014 metacognition boosts retention.`,
+    });
+  }
+
+  // Struggler outreach
+  if (dist.struggling >= 3) {
+    const names = roster.filter(r => r.pMastery < 0.3).slice(0, 5).map(r => r.name).join(', ');
+    s.push({
+      priority: 'high',
+      title: 'Priority check-ins',
+      body: `${dist.struggling} students are below 30% mastery. Consider 1:1 or small-group check-ins with: ${names}.`,
+    });
+  }
+
+  // Almost-there nudge
+  const almostThere = roster.filter(r => r.pMastery >= 0.8 && r.pMastery < 0.95).length;
+  if (almostThere >= 2) {
+    s.push({
+      priority: 'low',
+      title: `${almostThere} students on the mastery edge`,
+      body: `They\u2019re between 80\u201395%. A single well-targeted practice round should push them across the threshold.`,
+    });
+  }
+
+  return s;
+}
+
 // Seed a synthetic classroom (~24 students) with varied mastery per node
 const FIRST_NAMES = ['Ava','Liam','Noah','Emma','Olivia','Ethan','Mia','Zoe','Kai','Nora','Aria','Leo','Maya','Ivan','Sara','Jade','Owen','Ruby','Finn','Isla','Ari','Theo','Luna','Rex'];
 async function seedClassroom(db) {
@@ -206,6 +285,79 @@ export async function GET(request) {
         .limit(20)
         .toArray();
       return NextResponse.json({ attempts: items.map(a => ({ ...a, _id: undefined })) });
+    }
+
+    if (root === 'teacher' && arg1 === 'concept' && arg2) {
+      // /api/teacher/concept/:nodeId  -> ranked roster + reteach hints
+      const node = await db.collection('nodes').findOne({ id: arg2 });
+      if (!node) return NextResponse.json({ error: 'Node not found' }, { status: 404 });
+      const strand = await db.collection('strands').findOne({ id: node.strandId });
+      const students = await db.collection('users').find({ role: 'student' }).toArray();
+      const studentIds = students.map(s => s.id);
+      const masteries = await db.collection('masteries')
+        .find({ userId: { $in: studentIds }, nodeId: arg2 })
+        .toArray();
+      const mMap = Object.fromEntries(masteries.map(m => [m.userId, m]));
+
+      const roster = students.map(s => {
+        const m = mMap[s.id];
+        const p = m ? m.pMastery : node.bktParams.pL0;
+        return {
+          id: s.id,
+          name: s.name,
+          pMastery: p,
+          mastered: p >= 0.95,
+        };
+      }).sort((a, b) => a.pMastery - b.pMastery); // ascending -> strugglers first
+
+      const dist = { struggling: 0, developing: 0, proficient: 0, mastered: 0 };
+      let sum = 0;
+      for (const r of roster) {
+        sum += r.pMastery;
+        if (r.pMastery >= 0.95) dist.mastered++;
+        else if (r.pMastery >= 0.7) dist.proficient++;
+        else if (r.pMastery >= 0.3) dist.developing++;
+        else dist.struggling++;
+      }
+      const avgP = roster.length ? sum / roster.length : 0;
+
+      // recent attempt error patterns for this node
+      const attempts = await db.collection('attempts')
+        .find({ nodeId: arg2, userId: { $in: studentIds } })
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray();
+      let slopeErrs = 0, interceptErrs = 0, wrongCount = 0;
+      for (const a of attempts) {
+        if (a.correct) continue;
+        wrongCount++;
+        const d = a.dataJson || {};
+        if (Math.abs(d.dm ?? 0) > Math.abs(d.db ?? 0)) slopeErrs++;
+        else interceptErrs++;
+      }
+
+      // Auto-generated reteach suggestions based on class shape
+      const suggestions = buildReteachSuggestions({
+        node, strand, dist, avgP, roster,
+        errorPattern: { slopeErrs, interceptErrs, wrongCount },
+      });
+
+      // Bottom 5 strugglers / top 5 leaders
+      const strugglers = roster.slice(0, Math.min(5, roster.length));
+      const leaders = [...roster].reverse().slice(0, Math.min(5, roster.length));
+
+      return NextResponse.json({
+        node: { id: node.id, code: node.code, title: node.title, description: node.description, bktParams: node.bktParams, widget: node.widget || null },
+        strand: strand ? { id: strand.id, code: strand.code, name: strand.name } : null,
+        avgP,
+        distribution: dist,
+        totalStudents: roster.length,
+        roster,
+        strugglers,
+        leaders,
+        suggestions,
+        errorPattern: { slopeErrs, interceptErrs, wrongCount },
+      });
     }
 
     if (root === 'teacher' && arg1 === 'analytics') {
