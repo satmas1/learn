@@ -116,24 +116,62 @@ function Dashboard() {
           </Card>
         )}
 
-        {/* Strands */}
-        <div className="space-y-10">
-          {strands.map(strand => (
-            <section key={strand.id}>
-              <div className="flex items-baseline justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-semibold tracking-tight">{strand.name}</h2>
-                  <p className="text-sm text-muted-foreground">{strand.description}</p>
+        {/* Strands grouped by grade */}
+        <div className="space-y-14">
+          {(() => {
+            // group strands by grade
+            const byGrade = {};
+            for (const s of strands) {
+              const g = s.grade || 0;
+              if (!byGrade[g]) byGrade[g] = [];
+              byGrade[g].push(s);
+            }
+            const grades = Object.keys(byGrade).map(Number).sort((a, b) => a - b);
+            const gradeTints = { 8: 'from-teal-500 to-cyan-500', 9: 'from-indigo-500 to-fuchsia-500' };
+            return grades.map(g => {
+              const gs = byGrade[g];
+              const nodes = gs.flatMap(s => s.nodes);
+              const mastered = nodes.filter(n => n.mastery?.mastered).length;
+              const avg = nodes.length ? (nodes.reduce((a, n) => a + (n.mastery?.pMastery || 0), 0) / nodes.length) : 0;
+              return (
+                <div key={g}>
+                  <div className={`rounded-xl bg-gradient-to-br ${gradeTints[g] || 'from-slate-500 to-slate-700'} text-white p-5 mb-5 flex flex-col sm:flex-row sm:items-center gap-3`}>
+                    <div className="h-12 w-12 rounded-xl bg-white/15 flex items-center justify-center text-2xl font-bold backdrop-blur">
+                      {g}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-xs uppercase tracking-widest opacity-80">Ontario Curriculum</div>
+                      <div className="text-2xl font-bold">Grade {g}</div>
+                      <div className="text-sm opacity-90">{gs.length} strand{gs.length > 1 ? 's' : ''} · {nodes.length} concepts</div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <Badge className="bg-white/20 hover:bg-white/25 backdrop-blur"><Trophy className="h-3 w-3 mr-1" /> {mastered} mastered</Badge>
+                      <Badge className="bg-white/20 hover:bg-white/25 backdrop-blur">avg p(L) {(avg * 100).toFixed(0)}%</Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-10">
+                    {gs.map(strand => (
+                      <section key={strand.id}>
+                        <div className="flex items-baseline justify-between mb-4">
+                          <div>
+                            <h2 className="text-xl font-semibold tracking-tight">{strand.name}</h2>
+                            <p className="text-sm text-muted-foreground">{strand.description}</p>
+                          </div>
+                          <Badge variant="outline">{strand.code}</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {strand.nodes.map(node => (
+                            <NodeCard key={node.id} node={node} />
+                          ))}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
                 </div>
-                <Badge variant="outline">{strand.code} · Grade {strand.grade}</Badge>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {strand.nodes.map(node => (
-                  <NodeCard key={node.id} node={node} />
-                ))}
-              </div>
-            </section>
-          ))}
+              );
+            });
+          })()}
         </div>
 
         <footer className="mt-16 text-center text-xs text-muted-foreground">

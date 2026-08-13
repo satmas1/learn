@@ -4,8 +4,8 @@ import { bktUpdate, DEFAULT_MASTERY_THRESHOLD } from '@/lib/bkt';
 import { getQuestionsForNode, getTestQuestions, TESTS } from '@/lib/questionBank';
 import { v4 as uuidv4 } from 'uuid';
 
-// ---- Seed data (Ontario Grade 9 Math aligned examples) ----
-const SCHEMA_VERSION = 3;
+// ---- Seed data (Ontario Grade 8 + 9 Math aligned examples) ----
+const SCHEMA_VERSION = 4;
 
 const bktEasy   = { pL0: 0.15, pT: 0.18, pG: 0.22, pS: 0.10 };
 const bktMed    = { pL0: 0.10, pT: 0.15, pG: 0.20, pS: 0.10 };
@@ -50,6 +50,48 @@ const SEED_STRANDS = [
       { id: 'node-abs-value',          code: 'B2.3', title: 'Absolute Value',                   description: 'Find any x with the given |x|.',                                                   bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: -8,  max: 8,  step: 0.5, tolerance: 0.3, mode: 'absolute' } } },
       { id: 'node-squares',            code: 'B3.1', title: 'Squares (x\u00b2)',                description: 'Find an x whose square hits a target.',                                            bktParams: bktHard, widget: { kind: 'NumberLineMarker', config: { min: -6,  max: 6,  step: 0.1, tolerance: 0.4, mode: 'square' } } },
       { id: 'node-cubes',              code: 'B3.2', title: 'Cubes (x\u00b3)',                  description: 'Find an x whose cube hits a target.',                                              bktParams: bktHard, widget: { kind: 'NumberLineMarker', config: { min: -4,  max: 4,  step: 0.1, tolerance: 0.6, mode: 'cube' } } },
+    ],
+  },
+
+  // ---- Ontario Grade 8 ----
+  {
+    id: 'strand-g8-number',
+    code: 'MTH8-B',
+    name: 'Number (Grade 8)',
+    grade: 8,
+    region: 'ON',
+    description: 'Fractions, integers, powers and rates \u2014 Grade 8 number sense.',
+    nodes: [
+      { id: 'g8-frac-thirds',       code: 'B1.1', title: 'Fractions in Thirds',            description: 'Shade a bar divided into 3 equal parts.',                       bktParams: bktEasy, widget: { kind: 'FractionBar',      config: { denoms: [3] } } },
+      { id: 'g8-frac-fifths',       code: 'B1.2', title: 'Fractions in Fifths',            description: 'Shade a bar divided into 5 equal parts.',                       bktParams: bktEasy, widget: { kind: 'FractionBar',      config: { denoms: [5] } } },
+      { id: 'g8-frac-twelfths',     code: 'B1.3', title: 'Fractions in Twelfths',          description: 'Bars with 12 parts \u2014 useful for time and ratios.',         bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [12] } } },
+      { id: 'g8-frac-mixed-8',      code: 'B1.4', title: 'Mixed Small Denominators',       description: 'Vary between 3, 4, 5, 6 parts.',                                bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [3,4,5,6] } } },
+      { id: 'g8-integer-line',      code: 'B2.1', title: 'Integers on a Number Line',      description: 'Place a marker at a whole-number target between \u00b115.',     bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: -15, max: 15, step: 1, tolerance: 0.5 } } },
+      { id: 'g8-integer-wide',      code: 'B2.2', title: 'Wider Integer Range',            description: 'Working across a wider integer number line.',                   bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: -20, max: 20, step: 1, tolerance: 0.5 } } },
+      { id: 'g8-abs-8',             code: 'B2.3', title: 'Absolute Value (Grade 8)',       description: 'Place a value that has the given |x|.',                         bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: -10, max: 10, step: 0.5, tolerance: 0.4, mode: 'absolute' } } },
+      { id: 'g8-squares-8',         code: 'B3.1', title: 'Perfect Squares',                description: 'Find x with x\u00b2 equal to a perfect square target.',         bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: -8,  max: 8,  step: 0.1, tolerance: 0.3, mode: 'square' } } },
+      { id: 'g8-cubes-8',           code: 'B3.2', title: 'Perfect Cubes',                  description: 'Find x with x\u00b3 equal to a perfect cube target.',           bktParams: bktHard, widget: { kind: 'NumberLineMarker', config: { min: -4,  max: 4,  step: 0.1, tolerance: 0.6, mode: 'cube' } } },
+      { id: 'g8-half-steps',        code: 'B4.1', title: 'Halves & Half-Steps',            description: 'Precision practice with values ending in .5.',                  bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: -8,  max: 8,  step: 0.5, tolerance: 0.25 } } },
+    ],
+  },
+  {
+    id: 'strand-g8-algebra',
+    code: 'MTH8-C',
+    name: 'Algebra & Patterns (Grade 8)',
+    grade: 8,
+    region: 'ON',
+    description: 'Linear patterns, expressions and beginning algebra \u2014 Grade 8.',
+    nodes: [
+      { id: 'g8-slope-intro',       code: 'C1.1', title: 'Slope Concept (Intro)',          description: 'Y-intercept fixed at 0 \u2014 focus purely on slope.',          bktParams: bktEasy, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { fixedIntercept: 0, mSet: [1, 2, 3, -1, -2, -3] } } },
+      { id: 'g8-intercept-intro',   code: 'C1.2', title: 'Y-Intercept (Intro)',            description: 'Slope fixed at 1 \u2014 focus on where the line crosses.',      bktParams: bktEasy, widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: { fixedSlope: 1, bSet: [-3, -2, -1, 0, 1, 2, 3] } } },
+      { id: 'g8-linear-pattern',    code: 'C1.3', title: 'Linear Growing Pattern',         description: 'Match a line for a positive growing pattern.',                  bktParams: bktEasy, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { mSet: [1, 2, 3], bSet: [0, 1, 2, 3] } } },
+      { id: 'g8-linear-shrink',     code: 'C1.4', title: 'Linear Shrinking Pattern',       description: 'Match a line for a shrinking (decreasing) pattern.',            bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { mSet: [-1, -2, -3], bSet: [3, 4, 5, 6] } } },
+      { id: 'g8-slope-basic',       code: 'C2.1', title: 'Slope Basics',                   description: 'General slopes with the intercept slider live.',                bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: { mSet: [-2, -1, 1, 2], bSet: [-2, -1, 0, 1, 2] } } },
+      { id: 'g8-line-match',        code: 'C2.2', title: 'Match a Full Line',              description: 'Both slope and intercept can vary \u2014 general practice.',    bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: {} } },
+      { id: 'g8-frac-slopes',       code: 'C2.3', title: 'Half Slopes',                    description: 'Recognize \u00b1\u00bd slopes on a Cartesian plane.',            bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.10, config: { mSet: [-0.5, 0.5] } } },
+      { id: 'g8-model-savings',     code: 'C3.1', title: 'Savings Pattern',                description: 'Model a weekly savings scenario as a line.',                    bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mSet: [1, 2, 3, 4], bSet: [0, 5, 10] } } },
+      { id: 'g8-model-cooling',     code: 'C3.2', title: 'Cooling / Draining Model',       description: 'Something starts high and decreases \u2014 model the line.',    bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mSet: [-1, -2, -3], bSet: [4, 5, 6] } } },
+      { id: 'g8-mixed-review',      code: 'C4.1', title: 'Mixed Line Review',              description: 'All-in-one review covering slope & intercept sign combos.',    bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: {} } },
     ],
   },
 ];
