@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, ArrowRight, CheckCircle2, XCircle, RefreshCw, Trophy, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function QuizMode({ nodeId, onMasteryUpdate }) {
+export default function QuizMode({ nodeId, onMasteryUpdate, count: initialCount = 10, title, autoStart = false }) {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -17,7 +17,7 @@ export default function QuizMode({ nodeId, onMasteryUpdate }) {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [seedOffset, setSeedOffset] = useState(0);
-  const [count] = useState(10);
+  const [count] = useState(initialCount);
   const [nodeMeta, setNodeMeta] = useState(null);
 
   const loadSet = async (offset) => {

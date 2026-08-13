@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, GraduationCap, Trophy, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
+import { Sparkles, GraduationCap, Trophy, BookOpen, ArrowRight, Loader2, Target, Flame } from 'lucide-react';
 
 function Dashboard() {
   const [data, setData] = useState(null);
@@ -34,6 +34,13 @@ function Dashboard() {
   const totalNodes = allNodes.length;
   const masteredCount = allNodes.filter(n => n.mastery?.mastered).length;
   const avgMastery = totalNodes ? (allNodes.reduce((a, n) => a + (n.mastery?.pMastery || 0), 0) / totalNodes) : 0;
+
+  // Weakest not-yet-mastered node — target for drill CTA (all nodes have MCQ bank)
+  const weakest = (() => {
+    const pool = allNodes.filter(n => !n.mastery?.mastered);
+    if (!pool.length) return null;
+    return pool.reduce((min, n) => (n.mastery?.pMastery ?? 1) < (min.mastery?.pMastery ?? 1) ? n : min, pool[0]);
+  })();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -79,6 +86,35 @@ function Dashboard() {
             <StatCard icon={<Sparkles className="h-5 w-5" />} label="Avg. p(L)" value={`${(avgMastery * 100).toFixed(1)}%`} tint="from-fuchsia-500 to-pink-500" />
           </div>
         </div>
+
+        {/* Weakest concept CTA */}
+        {weakest && (
+          <Card className="mb-10 overflow-hidden relative border-amber-200">
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500" />
+            <CardContent className="p-5 pt-6 flex flex-col md:flex-row md:items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500 to-rose-500 text-white flex items-center justify-center shadow">
+                <Target className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Focus area</div>
+                  <Badge className="bg-amber-500 hover:bg-amber-500 gap-1"><Flame className="h-3 w-3" /> weakest</Badge>
+                </div>
+                <div className="font-semibold text-lg">{weakest.title}</div>
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-mono">{weakest.code}</span> · current mastery{' '}
+                  <span className="font-semibold text-foreground">{((weakest.mastery?.pMastery ?? 0) * 100).toFixed(1)}%</span>{' '}
+                  · a targeted 5-question drill can push it up.
+                </div>
+              </div>
+              <Link href={`/drill/${weakest.id}`}>
+                <Button className="bg-gradient-to-br from-amber-500 to-rose-500 hover:opacity-90">
+                  <Target className="h-4 w-4 mr-1" /> Start 5-question drill
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Strands */}
         <div className="space-y-10">

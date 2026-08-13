@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState, use } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,9 +10,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  ArrowLeft, ArrowRight, ArrowLeftCircle, CheckCircle2, XCircle, Loader2, Trophy, Sparkles, ClipboardCheck, ListChecks, RefreshCw,
+  ArrowLeft, ArrowRight, ArrowLeftCircle, CheckCircle2, XCircle, Loader2, Trophy, Sparkles, ClipboardCheck, ListChecks, RefreshCw, Target, Flame,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const QuizMode = dynamic(() => import('@/components/QuizMode'), { ssr: false });
 
 export default function TestPage({ params }) {
   const { testId } = use(params);
@@ -164,6 +167,16 @@ function ResultView({ bundle, answers, result, onRetake }) {
   const grade = pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F';
   const gradeTint = pct >= 80 ? 'from-emerald-500 to-teal-500' : pct >= 60 ? 'from-amber-500 to-orange-500' : 'from-rose-500 to-red-500';
 
+  // Weakest concept — lowest pMastery from perNode; skip already-mastered nodes
+  const weakest = useMemo(() => {
+    if (!result?.perNode?.length) return null;
+    const notMastered = result.perNode.filter(n => !n.mastered);
+    const pool = notMastered.length ? notMastered : result.perNode;
+    return pool.reduce((min, n) => (n.pMastery < min.pMastery ? n : min), pool[0]);
+  }, [result]);
+  const [drillOpen, setDrillOpen] = useState(true);
+  const [drillMastery, setDrillMastery] = useState(null);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       <header className="border-b bg-white/70 backdrop-blur sticky top-0 z-10">
@@ -194,6 +207,50 @@ function ResultView({ bundle, answers, result, onRetake }) {
             </div>
           </CardContent>
         </Card>
+
+        {/* Weak Concept Drill — auto-launched on the lowest-mastery concept */}
+        {weakest && (
+          <Card className="overflow-hidden relative border-amber-200">
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500" />
+            <CardHeader className="pt-6">
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-amber-500 to-rose-500 text-white flex items-center justify-center shadow">
+                  <Target className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    Weak Concept Drill
+                    <Badge className="bg-amber-500 hover:bg-amber-500 gap-1"><Flame className="h-3 w-3" /> Focus area</Badge>
+                  </CardTitle>
+                  <CardDescription>
+                    Your lowest mastery on this test was <span className="font-mono font-semibold text-foreground">{weakest.code}</span> — {weakest.title} at{' '}
+                    <span className="font-semibold text-foreground">{(weakest.pMastery * 100).toFixed(1)}%</span>.
+                    A targeted 5-question set is queued up to close the gap.
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" className="ml-auto" onClick={() => setDrillOpen(o => !o)}>
+                  {drillOpen ? 'Hide' : 'Show'}
+                </Button>
+              </div>
+              {drillMastery && (
+                <div className="mt-3 rounded-md bg-emerald-50 border border-emerald-200 p-2 text-xs text-emerald-800 flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Drill applied: p(L) {(drillMastery.previousP*100).toFixed(1)}% <ArrowRight className="inline h-3 w-3" /> <span className="font-bold">{(drillMastery.pMastery*100).toFixed(1)}%</span>
+                  {drillMastery.mastered && <Badge className="ml-1 bg-emerald-500"><Trophy className="h-3 w-3 mr-1" /> Mastered</Badge>}
+                </div>
+              )}
+            </CardHeader>
+            {drillOpen && (
+              <CardContent>
+                <QuizMode
+                  nodeId={weakest.nodeId}
+                  count={5}
+                  onMasteryUpdate={(m) => setDrillMastery(m)}
+                />
+              </CardContent>
+            )}
+          </Card>
+        )}
 
         <Card>
           <CardHeader>
