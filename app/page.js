@@ -50,6 +50,11 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/teacher">
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <GraduationCap className="h-3.5 w-3.5" /> Teacher View
+              </Button>
+            </Link>
             <Badge variant="secondary" className="gap-1"><GraduationCap className="h-3 w-3" /> {data?.user?.name || 'Student'}</Badge>
           </div>
         </div>

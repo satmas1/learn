@@ -77,10 +77,63 @@ async function getOrCreateDemoUser(db) {
   const users = db.collection('users');
   let u = await users.findOne({ email: 'demo@eduengine.local' });
   if (!u) {
-    u = { id: uuidv4(), email: 'demo@eduengine.local', name: 'Demo Student' };
+    u = { id: uuidv4(), email: 'demo@eduengine.local', name: 'Demo Student', role: 'student' };
     await users.insertOne(u);
   }
   return u;
+}
+
+// Seed a synthetic classroom (~24 students) with varied mastery per node
+const FIRST_NAMES = ['Ava','Liam','Noah','Emma','Olivia','Ethan','Mia','Zoe','Kai','Nora','Aria','Leo','Maya','Ivan','Sara','Jade','Owen','Ruby','Finn','Isla','Ari','Theo','Luna','Rex'];
+async function seedClassroom(db) {
+  const nodes = await db.collection('nodes').find({}).toArray();
+  const usersColl = db.collection('users');
+  const masteriesColl = db.collection('masteries');
+
+  // profile archetypes with target p per node band
+  const archetypes = [
+    { skill: 0.2, name: 'struggling' },
+    { skill: 0.45, name: 'developing' },
+    { skill: 0.7, name: 'proficient' },
+    { skill: 0.92, name: 'advanced' },
+  ];
+
+  const students = [];
+  for (let i = 0; i < FIRST_NAMES.length; i++) {
+    const name = FIRST_NAMES[i];
+    const arche = archetypes[i % archetypes.length];
+    const u = {
+      id: uuidv4(),
+      email: `${name.toLowerCase()}${i}@class.local`,
+      name,
+      role: 'student',
+    };
+    students.push({ ...u, arche });
+    await usersColl.insertOne(u);
+  }
+
+  const ops = [];
+  for (const s of students) {
+    for (const n of nodes) {
+      // noise around skill; nodes with higher pS/pG feel harder
+      const noise = (Math.random() - 0.5) * 0.3;
+      let p = Math.min(0.999, Math.max(0.02, s.arche.skill + noise));
+      // small chance to be very low (recent intro)
+      if (Math.random() < 0.08) p = 0.05 + Math.random() * 0.1;
+      ops.push({
+        updateOne: {
+          filter: { userId: s.id, nodeId: n.id },
+          update: {
+            $set: { pMastery: p, mastered: p >= 0.95, updatedAt: new Date() },
+            $setOnInsert: { id: uuidv4(), userId: s.id, nodeId: n.id },
+          },
+          upsert: true,
+        },
+      });
+    }
+  }
+  if (ops.length) await masteriesColl.bulkWrite(ops);
+  return students.length;
 }
 
 // ---- Routing helpers ----
@@ -155,6 +208,69 @@ export async function GET(request) {
       return NextResponse.json({ attempts: items.map(a => ({ ...a, _id: undefined })) });
     }
 
+    if (root === 'teacher' && arg1 === 'analytics') {
+      // Ensure we have a classroom to analyze
+      const usersColl = db.collection('users');
+      const studentsCount = await usersColl.countDocuments({ role: 'student' });
+      if (studentsCount === 0) {
+        await seedClassroom(db);
+      }
+
+      const students = await usersColl.find({ role: 'student' }).toArray();
+      const strands = await db.collection('strands').find({}).toArray();
+      const nodes = await db.collection('nodes').find({}).toArray();
+      const studentIds = students.map(s => s.id);
+      const masteries = await db.collection('masteries').find({ userId: { $in: studentIds } }).toArray();
+
+      // build matrix: studentId -> nodeId -> pMastery
+      const matrix = {};
+      for (const s of students) matrix[s.id] = {};
+      for (const m of masteries) {
+        if (matrix[m.userId]) matrix[m.userId][m.nodeId] = { pMastery: m.pMastery, mastered: m.mastered };
+      }
+
+      // per-node distribution buckets
+      const buckets = ['struggling', 'developing', 'proficient', 'mastered']; // <0.3, 0.3-0.7, 0.7-0.95, >=0.95
+      const nodeStats = nodes.map(n => {
+        const dist = { struggling: 0, developing: 0, proficient: 0, mastered: 0 };
+        let sum = 0; let count = 0;
+        for (const s of students) {
+          const cell = matrix[s.id][n.id];
+          const p = cell ? cell.pMastery : n.bktParams.pL0;
+          sum += p; count += 1;
+          if (p >= 0.95) dist.mastered += 1;
+          else if (p >= 0.7) dist.proficient += 1;
+          else if (p >= 0.3) dist.developing += 1;
+          else dist.struggling += 1;
+        }
+        return {
+          nodeId: n.id,
+          code: n.code,
+          title: n.title,
+          strandId: n.strandId,
+          avgP: count ? sum / count : 0,
+          distribution: dist,
+          total: count,
+        };
+      });
+
+      // strand rollups
+      const strandStats = strands.map(s => {
+        const ns = nodeStats.filter(x => x.strandId === s.id);
+        const avg = ns.length ? ns.reduce((a, x) => a + x.avgP, 0) / ns.length : 0;
+        return { id: s.id, code: s.code, name: s.name, avgP: avg, nodeCount: ns.length };
+      });
+
+      return NextResponse.json({
+        students: students.map(s => ({ id: s.id, name: s.name })),
+        nodes: nodes.map(n => ({ id: n.id, code: n.code, title: n.title, strandId: n.strandId })),
+        strands: strands.map(s => ({ id: s.id, code: s.code, name: s.name })),
+        matrix,
+        nodeStats,
+        strandStats,
+      });
+    }
+
     return NextResponse.json({ error: 'Unknown route' }, { status: 404 });
   } catch (e) {
     console.error(e);
@@ -182,6 +298,16 @@ export async function POST(request) {
         }
       }
       return NextResponse.json({ ok: true, reseeded: true });
+    }
+
+    if (root === 'teacher' && (body?.action === 'seedClassroom' || parts[1] === 'seed-classroom')) {
+      // wipe synthetic students & their masteries, then reseed
+      const students = await db.collection('users').find({ role: 'student' }).toArray();
+      const ids = students.map(s => s.id);
+      await db.collection('users').deleteMany({ role: 'student' });
+      await db.collection('masteries').deleteMany({ userId: { $in: ids } });
+      const count = await seedClassroom(db);
+      return NextResponse.json({ ok: true, students: count });
     }
 
     if (root === 'attempts') {
