@@ -1,15 +1,27 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, GraduationCap, Trophy, BookOpen, ArrowRight, Loader2, Target, Flame } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Sparkles, GraduationCap, Trophy, BookOpen, ArrowRight, Loader2, Target, Flame, Layers } from 'lucide-react';
 
 function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [gradeFilter, setGradeFilter] = useState('all'); // 'all' | '8' | '9'
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('eduengine.gradeFilter');
+      if (saved) setGradeFilter(saved);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try { window.localStorage.setItem('eduengine.gradeFilter', gradeFilter); } catch {}
+  }, [gradeFilter]);
 
   const load = async () => {
     setLoading(true);
@@ -21,6 +33,17 @@ function Dashboard() {
 
   useEffect(() => { load(); }, []);
 
+  // Hooks that must run every render (before any early return)
+  const allStrandsRaw = data?.strands || [];
+  const gradeCounts = useMemo(() => {
+    const c = { all: 0, 8: 0, 9: 0 };
+    for (const s of allStrandsRaw) {
+      c.all += s.nodes.length;
+      c[String(s.grade)] = (c[String(s.grade)] || 0) + s.nodes.length;
+    }
+    return c;
+  }, [allStrandsRaw]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -29,13 +52,16 @@ function Dashboard() {
     );
   }
 
-  const strands = data?.strands || [];
+  const allStrands = allStrandsRaw;
+  const strands = gradeFilter === 'all'
+    ? allStrands
+    : allStrands.filter(s => String(s.grade) === gradeFilter);
   const allNodes = strands.flatMap(s => s.nodes);
   const totalNodes = allNodes.length;
   const masteredCount = allNodes.filter(n => n.mastery?.mastered).length;
   const avgMastery = totalNodes ? (allNodes.reduce((a, n) => a + (n.mastery?.pMastery || 0), 0) / totalNodes) : 0;
 
-  // Weakest not-yet-mastered node — target for drill CTA (all nodes have MCQ bank)
+  // Weakest not-yet-mastered node within the current filter
   const weakest = (() => {
     const pool = allNodes.filter(n => !n.mastery?.mastered);
     if (!pool.length) return null;
@@ -79,6 +105,29 @@ function Dashboard() {
           <p className="text-muted-foreground mt-2 max-w-2xl">
             Every answer you give updates a Bayesian estimate of what you truly know. Practice interactively and watch your mastery grow in real time.
           </p>
+
+          {/* Grade filter toggle */}
+          <div className="mt-5 flex items-center gap-3 flex-wrap">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> Grade level
+            </span>
+            <ToggleGroup
+              type="single"
+              value={gradeFilter}
+              onValueChange={(v) => v && setGradeFilter(v)}
+              className="bg-white border rounded-md p-1 shadow-sm"
+            >
+              <ToggleGroupItem value="all" className="px-3 h-8 data-[state=on]:bg-indigo-600 data-[state=on]:text-white">
+                All <span className="ml-1.5 text-[10px] opacity-70">{gradeCounts.all}</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="8" className="px-3 h-8 data-[state=on]:bg-teal-600 data-[state=on]:text-white">
+                Grade 8 <span className="ml-1.5 text-[10px] opacity-70">{gradeCounts['8'] || 0}</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="9" className="px-3 h-8 data-[state=on]:bg-indigo-600 data-[state=on]:text-white">
+                Grade 9 <span className="ml-1.5 text-[10px] opacity-70">{gradeCounts['9'] || 0}</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
             <StatCard icon={<BookOpen className="h-5 w-5" />} label="Concepts" value={totalNodes} tint="from-blue-500 to-cyan-500" />
