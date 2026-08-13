@@ -50,6 +50,11 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Link href="/tests">
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Trophy className="h-3.5 w-3.5" /> Tests
+              </Button>
+            </Link>
             <Link href="/teacher">
               <Button size="sm" variant="outline" className="gap-1.5">
                 <GraduationCap className="h-3.5 w-3.5" /> Teacher View

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { bktUpdate, DEFAULT_MASTERY_THRESHOLD } from '@/lib/bkt';
+import { getQuestionsForNode, getTestQuestions, TESTS } from '@/lib/questionBank';
 import { v4 as uuidv4 } from 'uuid';
 
 // ---- Seed data (Ontario Grade 9 Math aligned examples) ----
@@ -287,6 +288,45 @@ export async function GET(request) {
       return NextResponse.json({ attempts: items.map(a => ({ ...a, _id: undefined })) });
     }
 
+    if (root === 'practice' && arg1) {
+      // /api/practice/:nodeId?count=10&offset=0  -> question set
+      const url = new URL(request.url);
+      const count = Math.min(50, parseInt(url.searchParams.get('count') || '10', 10));
+      const offset = parseInt(url.searchParams.get('offset') || `${Math.floor(Math.random() * 100)}`, 10);
+      const node = await db.collection('nodes').findOne({ id: arg1 });
+      if (!node) return NextResponse.json({ error: 'Node not found' }, { status: 404 });
+      const qs = getQuestionsForNode(arg1, count, offset);
+      // strip correctIndex + explanation from client
+      const client = qs.map(q => ({ id: q.id, prompt: q.prompt, choices: q.choices, nodeId: q.nodeId }));
+      return NextResponse.json({
+        node: { id: node.id, code: node.code, title: node.title, description: node.description },
+        questions: client,
+        totalAvailable: 60,
+      });
+    }
+
+    if (root === 'tests' && !arg1) {
+      return NextResponse.json({ tests: TESTS.map(t => ({
+        id: t.id, title: t.title, description: t.description,
+        totalQuestions: t.totalQuestions, estMinutes: t.estMinutes,
+      })) });
+    }
+
+    if (root === 'tests' && arg1) {
+      const bundle = getTestQuestions(arg1);
+      if (!bundle) return NextResponse.json({ error: 'Test not found' }, { status: 404 });
+      const client = bundle.questions.map(q => ({
+        id: q.id, prompt: q.prompt, choices: q.choices, nodeId: q.nodeId,
+      }));
+      return NextResponse.json({
+        test: {
+          id: bundle.test.id, title: bundle.test.title, description: bundle.test.description,
+          estMinutes: bundle.test.estMinutes, totalQuestions: bundle.test.totalQuestions,
+        },
+        questions: client,
+      });
+    }
+
     if (root === 'teacher' && arg1 === 'concept' && arg2) {
       // /api/teacher/concept/:nodeId  -> ranked roster + reteach hints
       const node = await db.collection('nodes').findOne({ id: arg2 });
@@ -435,7 +475,7 @@ export async function POST(request) {
     const db = await getDb();
     await ensureSeeded(db);
     const parts = parsePath(request);
-    const [root] = parts;
+    const [root, arg1, arg2] = parts;
     const body = await request.json().catch(() => ({}));
 
     if (root === 'seed') {
@@ -450,6 +490,128 @@ export async function POST(request) {
         }
       }
       return NextResponse.json({ ok: true, reseeded: true });
+    }
+
+    if (root === 'practice' && arg1 && parts[2] === 'submit') {
+      // POST /api/practice/:nodeId/submit  { answers: { qid: choiceIndex } }
+      const user = await getOrCreateDemoUser(db);
+      const node = await db.collection('nodes').findOne({ id: arg1 });
+      if (!node) return NextResponse.json({ error: 'Node not found' }, { status: 404 });
+      const { answers = {}, seedOffset = 0, count = 10 } = body || {};
+
+      // Regenerate the same question set to get correctIndex authoritatively
+      const qs = getQuestionsForNode(arg1, count, seedOffset);
+
+      const masteries = db.collection('masteries');
+      let mDoc = await masteries.findOne({ userId: user.id, nodeId: arg1 });
+      let p = mDoc ? mDoc.pMastery : (node.bktParams.pL0 ?? 0.1);
+      const prevP = p;
+
+      const perQuestion = [];
+      let correctCount = 0;
+      for (const q of qs) {
+        const chosen = answers[q.id];
+        const isCorrect = typeof chosen === 'number' && chosen === q.correctIndex;
+        if (isCorrect) correctCount++;
+        p = bktUpdate(p, isCorrect, node.bktParams);
+        perQuestion.push({
+          id: q.id,
+          correct: isCorrect,
+          correctIndex: q.correctIndex,
+          explanation: q.explanation,
+        });
+        await db.collection('attempts').insertOne({
+          id: uuidv4(),
+          userId: user.id,
+          nodeId: arg1,
+          correct: isCorrect,
+          dataJson: { source: 'practice-set', qid: q.id, chosen, correctIndex: q.correctIndex },
+          createdAt: new Date(),
+        });
+      }
+      const mastered = p >= DEFAULT_MASTERY_THRESHOLD;
+      await masteries.updateOne(
+        { userId: user.id, nodeId: arg1 },
+        {
+          $set: { pMastery: p, mastered, updatedAt: new Date() },
+          $setOnInsert: { id: uuidv4(), userId: user.id, nodeId: arg1 },
+        },
+        { upsert: true }
+      );
+      return NextResponse.json({
+        score: correctCount,
+        total: qs.length,
+        percent: qs.length ? correctCount / qs.length : 0,
+        mastery: { previousP: prevP, pMastery: p, mastered },
+        perQuestion,
+      });
+    }
+
+    if (root === 'tests' && arg1 && parts[2] === 'submit') {
+      // POST /api/tests/:testId/submit { answers: { qid: choiceIndex } }
+      const user = await getOrCreateDemoUser(db);
+      const bundle = getTestQuestions(arg1);
+      if (!bundle) return NextResponse.json({ error: 'Test not found' }, { status: 404 });
+      const { answers = {} } = body || {};
+
+      // Group by node
+      const byNode = {};
+      for (const q of bundle.questions) {
+        if (!byNode[q.nodeId]) byNode[q.nodeId] = [];
+        byNode[q.nodeId].push(q);
+      }
+
+      const masteries = db.collection('masteries');
+      const nodesColl = db.collection('nodes');
+      const perNode = [];
+      let totalCorrect = 0;
+      const perQuestion = [];
+
+      for (const [nodeId, qs] of Object.entries(byNode)) {
+        const node = await nodesColl.findOne({ id: nodeId });
+        if (!node) continue;
+        let mDoc = await masteries.findOne({ userId: user.id, nodeId });
+        let p = mDoc ? mDoc.pMastery : (node.bktParams.pL0 ?? 0.1);
+        const prevP = p;
+        let nodeCorrect = 0;
+        for (const q of qs) {
+          const chosen = answers[q.id];
+          const isCorrect = typeof chosen === 'number' && chosen === q.correctIndex;
+          if (isCorrect) { nodeCorrect++; totalCorrect++; }
+          p = bktUpdate(p, isCorrect, node.bktParams);
+          perQuestion.push({
+            id: q.id, nodeId, correct: isCorrect,
+            correctIndex: q.correctIndex, explanation: q.explanation,
+          });
+          await db.collection('attempts').insertOne({
+            id: uuidv4(), userId: user.id, nodeId,
+            correct: isCorrect,
+            dataJson: { source: 'test', testId: arg1, qid: q.id, chosen, correctIndex: q.correctIndex },
+            createdAt: new Date(),
+          });
+        }
+        const mastered = p >= DEFAULT_MASTERY_THRESHOLD;
+        await masteries.updateOne(
+          { userId: user.id, nodeId },
+          { $set: { pMastery: p, mastered, updatedAt: new Date() },
+            $setOnInsert: { id: uuidv4(), userId: user.id, nodeId } },
+          { upsert: true }
+        );
+        perNode.push({
+          nodeId, code: node.code, title: node.title,
+          correct: nodeCorrect, total: qs.length,
+          previousP: prevP, pMastery: p, mastered,
+        });
+      }
+
+      return NextResponse.json({
+        testId: arg1,
+        score: totalCorrect,
+        total: bundle.questions.length,
+        percent: bundle.questions.length ? totalCorrect / bundle.questions.length : 0,
+        perNode,
+        perQuestion,
+      });
     }
 
     if (root === 'teacher' && (body?.action === 'seedClassroom' || parts[1] === 'seed-classroom')) {

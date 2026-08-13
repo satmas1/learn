@@ -7,8 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, CheckCircle2, XCircle, RefreshCw, Sparkles, Trophy, Loader2 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { ArrowLeft, CheckCircle2, XCircle, RefreshCw, Sparkles, Trophy, Loader2, ClipboardList, LineChart } from 'lucide-react';
 import { toast } from 'sonner';
+
+const QuizMode = dynamic(() => import('@/components/QuizMode'), { ssr: false });
 
 const GraphView = dynamic(() => import('@/components/GraphView'), { ssr: false, loading: () => (
   <div className="h-[420px] flex items-center justify-center bg-muted/30 rounded-lg"><Loader2 className="h-6 w-6 animate-spin" /></div>
@@ -130,23 +133,30 @@ function PracticePage({ params }) {
           <p className="text-muted-foreground mt-1">{node.description}</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Graph */}
-          <Card className="lg:col-span-3">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Match the target line</CardTitle>
-              <CardDescription>
-                Target (dashed blue): <span className="font-mono">y = {target.m}x {target.b >= 0 ? '+' : '-'} {Math.abs(target.b)}</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <GraphView target={target} guess={guess} showFeedback={!!feedback} correct={feedback?.correct} />
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="widget" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="widget" className="gap-1.5"><LineChart className="h-4 w-4" /> Interactive Graph</TabsTrigger>
+            <TabsTrigger value="quiz" className="gap-1.5"><ClipboardList className="h-4 w-4" /> Quick Quiz</TabsTrigger>
+          </TabsList>
 
-          {/* Controls */}
-          <div className="lg:col-span-2 space-y-4">
-            <Card>
+          <TabsContent value="widget">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Graph */}
+              <Card className="lg:col-span-3">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Match the target line</CardTitle>
+                  <CardDescription>
+                    Target (dashed blue): <span className="font-mono">y = {target.m}x {target.b >= 0 ? '+' : '-'} {Math.abs(target.b)}</span>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GraphView target={target} guess={guess} showFeedback={!!feedback} correct={feedback?.correct} />
+                </CardContent>
+              </Card>
+
+              {/* Controls */}
+              <div className="lg:col-span-2 space-y-4">
+                <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Your Line</CardTitle>
                 <CardDescription>
@@ -210,7 +220,13 @@ function PracticePage({ params }) {
               </CardContent>
             </Card>
           </div>
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="quiz">
+            <QuizMode nodeId={nodeId} onMasteryUpdate={(m) => setMastery(m)} />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
