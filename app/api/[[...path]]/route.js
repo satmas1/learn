@@ -438,6 +438,7 @@ export async function GET(request) {
       return NextResponse.json({ tests: TESTS.map(t => ({
         id: t.id, title: t.title, description: t.description,
         totalQuestions: t.totalQuestions, estMinutes: t.estMinutes,
+        grade: t.grade || 'mixed',
       })) });
     }
 
