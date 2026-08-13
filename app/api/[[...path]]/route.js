@@ -5,7 +5,7 @@ import { getQuestionsForNode, getTestQuestions, TESTS } from '@/lib/questionBank
 import { v4 as uuidv4 } from 'uuid';
 
 // ---- Seed data (Ontario Grade 8 + 9 Math aligned examples) ----
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 const bktEasy   = { pL0: 0.15, pT: 0.18, pG: 0.22, pS: 0.10 };
 const bktMed    = { pL0: 0.10, pT: 0.15, pG: 0.20, pS: 0.10 };
@@ -92,6 +92,88 @@ const SEED_STRANDS = [
       { id: 'g8-model-savings',     code: 'C3.1', title: 'Savings Pattern',                description: 'Model a weekly savings scenario as a line.',                    bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mSet: [1, 2, 3, 4], bSet: [0, 5, 10] } } },
       { id: 'g8-model-cooling',     code: 'C3.2', title: 'Cooling / Draining Model',       description: 'Something starts high and decreases \u2014 model the line.',    bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mSet: [-1, -2, -3], bSet: [4, 5, 6] } } },
       { id: 'g8-mixed-review',      code: 'C4.1', title: 'Mixed Line Review',              description: 'All-in-one review covering slope & intercept sign combos.',    bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: {} } },
+    ],
+  },
+  {
+    id: 'strand-g8-data',
+    code: 'MTH8-D',
+    name: 'Data Literacy (Grade 8)',
+    grade: 8,
+    region: 'ON',
+    description: 'Reading data, probability and proportional reasoning.',
+    nodes: [
+      { id: 'g8-percent-basic',     code: 'D1.1', title: 'Percents on a Number Line',       description: 'Place a percent value between 0 and 100.',                      bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: 0,   max: 100, step: 1,   tolerance: 2 } } },
+      { id: 'g8-prob-fraction',     code: 'D2.1', title: 'Probability as a Fraction',       description: 'Shade the bar to represent a probability like 3/8.',            bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [4, 5, 6, 8, 10] } } },
+      { id: 'g8-prob-decimal',      code: 'D2.2', title: 'Probability as a Decimal',        description: 'Place a probability decimal between 0 and 1.',                  bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: 0,   max: 1,   step: 0.05, tolerance: 0.05 } } },
+      { id: 'g8-proportion',        code: 'D3.1', title: 'Proportional Reasoning',          description: 'Model equivalent ratios as fractions of the same bar.',         bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [6, 8, 10, 12] } } },
+    ],
+  },
+  {
+    id: 'strand-g8-spatial',
+    code: 'MTH8-E',
+    name: 'Spatial Sense (Grade 8)',
+    grade: 8,
+    region: 'ON',
+    description: 'Angles, measurement and geometric reasoning.',
+    nodes: [
+      { id: 'g8-angle-acute',       code: 'E1.1', title: 'Angle Measures (Acute)',          description: 'Place a marker at an acute angle in degrees (0\u201390).',       bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: 0,   max: 90,  step: 1,   tolerance: 3 } } },
+      { id: 'g8-angle-obtuse',      code: 'E1.2', title: 'Angle Measures (Obtuse)',         description: 'Place a marker at an obtuse angle (90\u2013180).',              bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: 90,  max: 180, step: 1,   tolerance: 3 } } },
+      { id: 'g8-perpendicular-8',   code: 'E2.1', title: 'Perpendicular Slopes',            description: 'Sketch a line perpendicular to a reference line.',              bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mode: 'perpendicular', reference: { m: 1, b: 0 } } } },
+      { id: 'g8-parallel-8',        code: 'E2.2', title: 'Parallel Lines (Intro)',          description: 'Sketch a line parallel to a reference line.',                   bktParams: bktEasy, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { mode: 'parallel', reference: { m: 1, b: 1 } } } },
+    ],
+  },
+  {
+    id: 'strand-g8-finance',
+    code: 'MTH8-F',
+    name: 'Financial Literacy (Grade 8)',
+    grade: 8,
+    region: 'ON',
+    description: 'Percents, budgets and simple interest.',
+    nodes: [
+      { id: 'g8-discount-percent',  code: 'F1.1', title: 'Discount Percent',                description: 'Place a percent representing a store discount.',                bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: 0, max: 100, step: 5, tolerance: 3 } } },
+      { id: 'g8-tax-percent',       code: 'F1.2', title: 'Tax Percent',                     description: 'Place a common tax rate on the percent line.',                  bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: 0, max: 20,  step: 0.5, tolerance: 0.5 } } },
+      { id: 'g8-budget-linear',     code: 'F2.1', title: 'Budget as a Linear Model',        description: 'Model a saving-per-week budget as a line.',                     bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mSet: [5, 10, 15, 20], bSet: [0, 20, 40, 60] } } },
+    ],
+  },
+  {
+    id: 'strand-g9-data',
+    code: 'MTH1W-D',
+    name: 'Data (Grade 9)',
+    grade: 9,
+    region: 'ON',
+    description: 'Data visualization and probability modelling.',
+    nodes: [
+      { id: 'g9-relative-freq',     code: 'D1.1', title: 'Relative Frequency',              description: 'Model a relative frequency as a fraction of a bar.',            bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [8, 10, 12, 20] } } },
+      { id: 'g9-scatter-slope',     code: 'D2.1', title: 'Trend Lines',                     description: 'Fit a line of best-fit\u2013style linear model.',               bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: {} } },
+      { id: 'g9-prob-decimal',      code: 'D3.1', title: 'Probability (Decimal)',           description: 'Place a probability estimate between 0 and 1.',                 bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: 0, max: 1, step: 0.05, tolerance: 0.05 } } },
+      { id: 'g9-prob-percent',      code: 'D3.2', title: 'Probability (Percent)',           description: 'Place a probability as a percent from 0 to 100.',               bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: 0, max: 100, step: 1, tolerance: 2 } } },
+    ],
+  },
+  {
+    id: 'strand-g9-geometry',
+    code: 'MTH1W-E',
+    name: 'Geometry & Measurement (Grade 9)',
+    grade: 9,
+    region: 'ON',
+    description: 'Angles, perpendicularity and coordinate geometry.',
+    nodes: [
+      { id: 'g9-angle-acute',       code: 'E1.1', title: 'Acute Angles',                    description: 'Locate an acute angle between 0 and 90 degrees.',               bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: 0,   max: 90,  step: 1, tolerance: 3 } } },
+      { id: 'g9-angle-reflex',      code: 'E1.2', title: 'Reflex Angles',                   description: 'Locate a reflex angle beyond 180 degrees.',                     bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: 180, max: 360, step: 1, tolerance: 5 } } },
+      { id: 'g9-perp-lines-9',      code: 'E2.1', title: 'Perpendicular Lines (Coord)',     description: 'Sketch a coordinate-plane line perpendicular to a reference.',  bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { mode: 'perpendicular', reference: { m: 3, b: 0 } } } },
+      { id: 'g9-parallel-lines-9',  code: 'E2.2', title: 'Parallel Lines (Coord)',          description: 'Sketch a coordinate-plane line parallel to a reference.',       bktParams: bktEasy, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { mode: 'parallel', reference: { m: -1, b: 2 } } } },
+    ],
+  },
+  {
+    id: 'strand-g9-finance',
+    code: 'MTH1W-F',
+    name: 'Financial Literacy (Grade 9)',
+    grade: 9,
+    region: 'ON',
+    description: 'Budgeting, interest and financial modelling.',
+    nodes: [
+      { id: 'g9-simple-interest',   code: 'F1.1', title: 'Simple Interest Rate',            description: 'Place a common annual interest rate on the percent line.',      bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: 0, max: 15,  step: 0.25, tolerance: 0.5 } } },
+      { id: 'g9-tax-rate',          code: 'F1.2', title: 'Provincial Tax',                  description: 'Place a common provincial tax rate.',                           bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: 0, max: 20,  step: 0.25, tolerance: 0.5 } } },
+      { id: 'g9-savings-linear',    code: 'F2.1', title: 'Savings Linear Model',            description: 'Model long-term savings as a line.',                            bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mSet: [10, 20, 25, 50], bSet: [0, 50, 100] } } },
     ],
   },
 ];
