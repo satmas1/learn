@@ -5,6 +5,12 @@ import { getQuestionsForNode, getTestQuestions, TESTS } from '@/lib/questionBank
 import { v4 as uuidv4 } from 'uuid';
 
 // ---- Seed data (Ontario Grade 9 Math aligned examples) ----
+const SCHEMA_VERSION = 3;
+
+const bktEasy   = { pL0: 0.15, pT: 0.18, pG: 0.22, pS: 0.10 };
+const bktMed    = { pL0: 0.10, pT: 0.15, pG: 0.20, pS: 0.10 };
+const bktHard   = { pL0: 0.08, pT: 0.12, pG: 0.15, pS: 0.12 };
+
 const SEED_STRANDS = [
   {
     id: 'strand-algebra',
@@ -14,30 +20,16 @@ const SEED_STRANDS = [
     region: 'ON',
     description: 'Linear equations, slope, intercepts, and modelling.',
     nodes: [
-      {
-        id: 'node-slope-intercept',
-        code: 'C3.1',
-        title: 'Slope–Intercept Form',
-        description: 'Match a target line by adjusting slope (m) and y-intercept (b).',
-        bktParams: { pL0: 0.10, pT: 0.15, pG: 0.20, pS: 0.10 },
-        widget: { kind: 'LinearGraphMatcher', tolerance: 0.15 },
-      },
-      {
-        id: 'node-parallel-lines',
-        code: 'C3.2',
-        title: 'Parallel & Perpendicular Lines',
-        description: 'Identify slope relationships between lines.',
-        bktParams: { pL0: 0.10, pT: 0.12, pG: 0.25, pS: 0.10 },
-        widget: { kind: 'LinearGraphMatcher', tolerance: 0.15 },
-      },
-      {
-        id: 'node-linear-modelling',
-        code: 'C4.1',
-        title: 'Modelling with Linear Functions',
-        description: 'Fit a line to a real-world scenario.',
-        bktParams: { pL0: 0.08, pT: 0.14, pG: 0.18, pS: 0.12 },
-        widget: { kind: 'LinearGraphMatcher', tolerance: 0.20 },
-      },
+      { id: 'node-slope-intercept',    code: 'C1.1', title: 'Slope\u2013Intercept Form',        description: 'Match a target line by adjusting slope (m) and y-intercept (b).',                  bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: {} } },
+      { id: 'node-y-intercept',        code: 'C1.2', title: 'Y-Intercept Only',                description: 'The slope is fixed \u2014 dial in just the y-intercept.',                          bktParams: bktEasy, widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: { fixedSlope: 1 } } },
+      { id: 'node-slope-only',         code: 'C1.3', title: 'Slope Through Origin',            description: 'Y-intercept is 0 \u2014 focus on getting the slope right.',                        bktParams: bktEasy, widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: { fixedIntercept: 0 } } },
+      { id: 'node-negative-slopes',    code: 'C2.1', title: 'Negative Slopes',                 description: 'Lines that fall from left to right.',                                              bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: { mSet: [-4,-3,-2.5,-2,-1.5,-1,-0.5] } } },
+      { id: 'node-steep-slopes',       code: 'C2.2', title: 'Steep Slopes',                    description: 'Working with large-magnitude slopes.',                                             bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { mSet: [-5,-4,-3,3,4,5] } } },
+      { id: 'node-fractional-slopes',  code: 'C2.3', title: 'Fractional Slopes',               description: 'Slopes like 1/2, 1/3, 2/3.',                                                       bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.10, config: { mSet: [-1, -0.5, -0.33, 0.33, 0.5, 1] } } },
+      { id: 'node-parallel-lines',     code: 'C3.1', title: 'Parallel Lines',                  description: 'Draw a line PARALLEL to the reference line.',                                      bktParams: bktMed,  widget: { kind: 'LinearGraphMatcher', tolerance: 0.15, config: { mode: 'parallel', reference: { m: 2, b: -1 } } } },
+      { id: 'node-perpendicular',      code: 'C3.2', title: 'Perpendicular Lines',             description: 'Draw a line PERPENDICULAR to the reference line.',                                 bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: { mode: 'perpendicular', reference: { m: 2, b: 1 } } } },
+      { id: 'node-linear-modelling',   code: 'C4.1', title: 'Modelling with Linear Functions', description: 'Match a linear model from a real-world scenario.',                                 bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.20, config: {} } },
+      { id: 'node-word-problems',      code: 'C4.2', title: 'Rate + Start Value',              description: 'Interpret slope (rate) and y-intercept (start value) in context.',                 bktParams: bktHard, widget: { kind: 'LinearGraphMatcher', tolerance: 0.25, config: { mSet: [1,2,3,4,5], bSet: [0,5,10,15,20,25,30] } } },
     ],
   },
   {
@@ -46,16 +38,18 @@ const SEED_STRANDS = [
     name: 'Number Sense',
     grade: 9,
     region: 'ON',
-    description: 'Operations with rational numbers and exponents.',
+    description: 'Fractions, rationals, and number-line reasoning.',
     nodes: [
-      {
-        id: 'node-rational-ops',
-        code: 'B2.1',
-        title: 'Rational Number Operations',
-        description: 'Practice adding, subtracting, multiplying rationals.',
-        bktParams: { pL0: 0.15, pT: 0.15, pG: 0.20, pS: 0.10 },
-        widget: null,
-      },
+      { id: 'node-frac-halves',        code: 'B1.1', title: 'Fractions with Halves & Quarters', description: 'Shade the bar to represent a fraction with denominator 4.',                       bktParams: bktEasy, widget: { kind: 'FractionBar',      config: { denoms: [4] } } },
+      { id: 'node-frac-sixths',        code: 'B1.2', title: 'Fractions in Sixths',              description: 'Shade a bar divided into 6 equal parts.',                                          bktParams: bktEasy, widget: { kind: 'FractionBar',      config: { denoms: [6] } } },
+      { id: 'node-frac-eighths',       code: 'B1.3', title: 'Fractions in Eighths',             description: 'Shade a bar divided into 8 equal parts.',                                          bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [8] } } },
+      { id: 'node-frac-tenths',        code: 'B1.4', title: 'Fractions in Tenths',              description: 'Decimal-adjacent thinking with tenths.',                                           bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [10] } } },
+      { id: 'node-frac-mixed',         code: 'B1.5', title: 'Mixed Denominators',               description: 'Recognize fractions across many denominators.',                                    bktParams: bktMed,  widget: { kind: 'FractionBar',      config: { denoms: [4,6,8,10,12] } } },
+      { id: 'node-numline-integers',   code: 'B2.1', title: 'Number Line: Integers',            description: 'Slide the marker to hit a target integer.',                                        bktParams: bktEasy, widget: { kind: 'NumberLineMarker', config: { min: -10, max: 10, step: 1, tolerance: 0.5 } } },
+      { id: 'node-numline-halves',     code: 'B2.2', title: 'Number Line: Halves',              description: 'Place the marker at a target ending in .5.',                                       bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: -6,  max: 6,  step: 0.1, tolerance: 0.2 } } },
+      { id: 'node-abs-value',          code: 'B2.3', title: 'Absolute Value',                   description: 'Find any x with the given |x|.',                                                   bktParams: bktMed,  widget: { kind: 'NumberLineMarker', config: { min: -8,  max: 8,  step: 0.5, tolerance: 0.3, mode: 'absolute' } } },
+      { id: 'node-squares',            code: 'B3.1', title: 'Squares (x\u00b2)',                description: 'Find an x whose square hits a target.',                                            bktParams: bktHard, widget: { kind: 'NumberLineMarker', config: { min: -6,  max: 6,  step: 0.1, tolerance: 0.4, mode: 'square' } } },
+      { id: 'node-cubes',              code: 'B3.2', title: 'Cubes (x\u00b3)',                  description: 'Find an x whose cube hits a target.',                                              bktParams: bktHard, widget: { kind: 'NumberLineMarker', config: { min: -4,  max: 4,  step: 0.1, tolerance: 0.6, mode: 'cube' } } },
     ],
   },
 ];
@@ -63,8 +57,14 @@ const SEED_STRANDS = [
 async function ensureSeeded(db) {
   const strands = db.collection('strands');
   const nodes = db.collection('nodes');
+  const meta = db.collection('meta');
+  const versionDoc = await meta.findOne({ key: 'schemaVersion' });
+  const currentVer = versionDoc?.value ?? 0;
   const existing = await strands.countDocuments();
-  if (existing > 0) return;
+  if (existing > 0 && currentVer === SCHEMA_VERSION) return;
+  // wipe and reseed
+  await strands.deleteMany({});
+  await nodes.deleteMany({});
   for (const s of SEED_STRANDS) {
     const { nodes: nodeList, ...strandDoc } = s;
     await strands.insertOne(strandDoc);
@@ -72,6 +72,11 @@ async function ensureSeeded(db) {
       await nodes.insertOne({ ...n, strandId: s.id });
     }
   }
+  await meta.updateOne(
+    { key: 'schemaVersion' },
+    { $set: { key: 'schemaVersion', value: SCHEMA_VERSION, updatedAt: new Date() } },
+    { upsert: true }
+  );
 }
 
 async function getOrCreateDemoUser(db) {
